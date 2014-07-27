@@ -1,0 +1,43 @@
+{% extends "base.html" %}
+{% block title %}{{ app_name }}{% endblock %}
+{% block body %}
+<h1>Hello {{ app_name }}</h1>
+<div ng-app="graphApp">
+  <div ng-controller="graphCtrl">
+  </div>
+</div>
+
+<div id="chart_div" style="width: 900px; height: 500px;"></div>
+
+{% endblock %}
+{% block script %}
+<script type="text/javascript" src="https://www.google.com/jsapi"></script>
+<script type="text/javascript">
+  google.load('visualization', '1', {packages:['corechart']});
+</script>
+<script>
+  var graphModule = angular.module("graphApp", []);
+  graphModule.constant('appName', '{{ app_name }}');
+  graphModule.controller('graphCtrl', function hoge($scope, $http, appName) {
+    $http.get('/api/v1/' + appName + '/data/')
+     .success(function(data) {
+       console.log(data);
+
+       var t_data = new google.visualization.DataTable();
+       t_data.addColumn('datetime', 'Time Stamp');
+       t_data.addColumn('number', 'Length');
+       for(i=0; i < data["length"].length; i++){
+         console.log(data["length"][i]["timestamp"]);
+         console.log(data["length"][i]["value"]);
+         t_data.addRow([new Date(data["length"][i]["timestamp"]), data["length"][i]["value"]]);
+       }
+       var options = {
+         title: appName
+       };  
+
+       var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+       chart.draw(t_data, options);
+     })
+  });
+</script>
+{% endblock %}

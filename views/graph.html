@@ -21,21 +21,20 @@
   graphModule.controller('graphCtrl', function hoge($scope, $http, appName) {
     $http.get('/api/v1/' + appName + '/data/')
      .success(function(data) {
-       console.log(data);
-
-       var t_data = new google.visualization.DataTable();
-       t_data.addColumn('datetime', 'Time Stamp');
-       t_data.addColumn('number', 'Length');
-       for(i=0; i < data["length"].length; i++){
-         console.log(data["length"][i]["timestamp"]);
-         console.log(data["length"][i]["value"]);
-         t_data.addRow([new Date(data["length"][i]["timestamp"]), data["length"][i]["value"]]);
+       for(i = 0 ; i < data.rows.length; i++){
+         data.rows[i].c[0].v = new Date(data.rows[i].c[0].v);
        }
+       console.log(data);
+       $scope.data = data;
+
+       var t_data = new google.visualization.DataTable(data);
        var options = {
          title: appName
        };  
 
        var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
+       console.log(chart);
+       console.log(t_data);
        chart.draw(t_data, options);
      })
   });

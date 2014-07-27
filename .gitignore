@@ -1,0 +1,9 @@
+# ---Backup files
+*~
+\#*\#
+
+# --- Binary modules
+*.pyc
+
+# --- System file of MacOS X
+.DS_Store

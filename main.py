@@ -1,17 +1,47 @@
 #!/usr/bin/env python
 import os
+import copy
 import webapp2
 import model
 import logging
 import json
 import datetime
 import jinja2
-
+import collections
 
 TEMPLATE_PATH = os.path.dirname(__file__) + '/views'
 jinja_env = jinja2.Environment(
     loader=jinja2.FileSystemLoader(TEMPLATE_PATH, encoding='utf8'),
     autoescape=True)
+
+class CustomOrderedDefaultdict(collections.OrderedDict):
+    def __init__(self, *args, **kwargs):
+        if not args:
+            self.default_factory = None
+        else:
+            if not (args[0] is None or callable(args[0])):
+                raise TypeError('first argument must be callable or None')
+            self.default_factory = args[0]
+            args = args[1:]
+        super(CustomOrderedDefaultdict, self).__init__(*args, **kwargs)
+
+    def __missing__ (self, key):
+        if self.default_factory is None:
+            raise KeyError(key)
+        self[key] = default = self.default_factory(key)
+        return default
+
+    def __reduce__(self):  # optional, for pickle support
+        args = (self.default_factory,) if self.default_factory else ()
+        return self.__class__, args, None, None, self.iteritems()
+
+class CustomDefaultDict(dict):
+    def __init__(self, factory):
+        self.factory = factory
+
+    def __missing__(self, key):
+        self[key] = self.factory(key)
+        return self[key]
 
 def json_response(method):
     def wrapper(self, *args, **kwargs):
@@ -38,9 +68,31 @@ class DataHandler(webapp2.RequestHandler):
             self.response.set_status(404)
             return {'message': 'application not found: ' + app_name}
 
-        results = {}
+        results = {};
+        results["cols"] = [{"id": "timestamp", "label": "Timestamp", "type": "datetime"}]
+        blank_row = [];
+        dataSet = collections.OrderedDict()
         for kind in app.kinds:
-            results[kind]=[p.to_dict() for p in app.getData(kind, limit)];
+            results["cols"].append({"id": kind, "label": kind, "type": "number"})
+            blank_row.append({"v": None})
+            dataSet[kind] = [p.to_dict() for p in app.getData(kind, limit)]
+
+        def row_factory(key):
+            r = copy.deepcopy(blank_row)
+            r.insert(0, {"v": key})
+            logging.info("New row:  %s " % r)
+            return r
+
+        rows = CustomOrderedDefaultdict(row_factory)
+
+        col_position = 0
+        for kind, values in dataSet.items():
+            col_position += 1
+            for v in values:
+                rows[v["timestamp"]][col_position]["v"] = v["value"]
+                logging.info(rows)
+
+        results["rows"] = [{"c": value} for key, value in rows.items()]
 
         return results
 

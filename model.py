@@ -1,5 +1,9 @@
 import uuid
 import hashlib
+import logging
+import collections
+import copy
+import customdict
 from google.appengine.ext import ndb
 
 # generate hashed string
@@ -13,15 +17,17 @@ class JsonConvertableDateTimeProperty(ndb.DateTimeProperty):
 
 class User(ndb.Model):
     name = ndb.StringProperty(default="Anonymous")
-    user_obj = ndb.UserProperty(required=True)
+    user_id = ndb.StringProperty(required=True)
     created = JsonConvertableDateTimeProperty(auto_now_add=True)
 
     @classmethod
     def create(cls, user, name=None):
         new_user = cls()
-        new_user.user_obj = user
+        new_user.user_id = user.user_id()
         if name != None:
             new_user.name = name
+        else:
+            new_user.name = user.nickname()
 
         new_user.put()
 
@@ -29,7 +35,7 @@ class User(ndb.Model):
 
     @classmethod
     def getByGoogleUser(cls, user):
-        return cls.query(cls.user_obj==user).get()
+        return cls.query(cls.user_id==user.user_id()).get()
 
     @classmethod
     def getByToken(cls, token_str):
@@ -93,8 +99,52 @@ class Application(ndb.Model):
 
         return GraphData.create(self, kind, value, timestamp)
 
+    def getOwner(self):
+        return self.key.parent().get()
+
+    def getInfo(self):
+        info = {"key": self.key.urlsafe(),
+                "owner": self.getOwner().key.urlsafe(),
+                "name": self.name,
+                "kinds": self.kinds}
+        return info
+
     def getData(self, kind, limit=60):
         return GraphData.get(self, kind, limit)
+
+    def getFormattedData(self, requestedKind=None, limit=60):
+        if requestedKind == None:
+            requestedKind = self.kinds
+
+        results = {};
+        results["cols"] = [{"id": "timestamp", "label": "Timestamp", "type": "datetime"}]
+        blank_row = [];
+        dataSet = collections.OrderedDict()
+        for kind in self.kinds:
+            if kind not in requestedKind:
+                continue
+
+            results["cols"].append({"id": kind, "label": kind, "type": "number"})
+            blank_row.append({"v": None})
+            dataSet[kind] = [p.to_dict() for p in self.getData(kind, limit)]
+
+        def row_factory(key):
+            r = copy.deepcopy(blank_row)
+            r.insert(0, {"v": key})
+            logging.info("New row:  %s " % r)
+            return r
+
+        rows = customdict.CustomOrderedDefaultdict(row_factory)
+
+        col_position = 0
+        for kind, values in dataSet.items():
+            col_position += 1
+            for v in values:
+                rows[v["timestamp"]][col_position]["v"] = v["value"]
+
+        results["rows"] = [{"c": value} for key, value in rows.items()]
+
+        return results
 
     @classmethod
     def create(cls, user, name):

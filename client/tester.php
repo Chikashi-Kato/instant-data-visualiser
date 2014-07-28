@@ -1,6 +1,6 @@
 <?php
 require_once("data-connector.php");
 
-$connector = new dataConnector\Connector("73a0a91b479e0f1e3dab5ee622cec9158f83011a5dd92d5d71430f6f0ee36b98", "test");
+$connector = new dataConnector\Connector("eac8e8180445a34e85fa115f420c75383d353572564251a3db1697bc2fa25abc", "test");
 $data = array("length"=>rand(0, 1000), "processes"=>rand(0,12));
 $connector->postData($data);

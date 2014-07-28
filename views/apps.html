@@ -3,6 +3,6 @@
 {% block body %}
 <h3>Your token is {{ token }}</h3>
   {% for app in apps %}
-<div><a href="/{{app_name}}/graph/">{{ app.name }}</a></div>
+     <div><a href="/{{app.name}}/graph/">{{ app.name }}</a></div>
   {% endfor %}
 {% endblock %}

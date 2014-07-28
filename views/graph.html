@@ -1,13 +1,15 @@
 {% extends "base.html" %}
 {% block title %}{{ app_name }}{% endblock %}
 {% block body %}
-<h1>Hello {{ app_name }}</h1>
 <div ng-app="graphApp">
-  <div ng-controller="graphCtrl">
-  </div>
+    <div ng-controller="graphCtrl">
+        <h1>Hello {{ app_name }}</h1>
+        <div ng-repeat="kind in appInfo.kinds">
+            <input type="checkbox" name="{[ kind.name ]}" ng-model="kind.selected" ng-change="updateGraph()">{[ kind.name ]}</input>
+        </div>
+        <div id="chart_div" style="width: 900px; height: 500px;"></div>
+    </div>
 </div>
-
-<div id="chart_div" style="width: 900px; height: 500px;"></div>
 
 {% endblock %}
 {% block script %}
@@ -17,30 +19,68 @@
 </script>
 <script>
   var graphModule = angular.module("graphApp", []);
-  graphModule.constant('appId', '{{ app_id }}');
+  graphModule.constant('appName', '{{ app_name }}');
   graphModule.constant('token', '{{ token }}');
-  graphModule.controller('graphCtrl', function hoge($scope, $http, appId, token) {
-    $http.get("/api/v1/" + appId + "/data/",
-              {
-                params: {"token": token}
-              })
-     .success(function(data) {
+  graphModule.config(function($interpolateProvider){
+     $interpolateProvider.startSymbol('{[').endSymbol(']}');
+  });
+
+  graphModule.controller('graphCtrl', function hoge($scope, $http, appName, token) {
+    var _updateGraph = function _updateGraph(data){
        for(i = 0 ; i < data.rows.length; i++){
          data.rows[i].c[0].v = new Date(data.rows[i].c[0].v);
        }
-       console.log(data);
-       $scope.data = data;
-
        var t_data = new google.visualization.DataTable(data);
        var options = {
          title: appName
-       };  
+       };
 
        var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
        console.log(chart);
        console.log(t_data);
        chart.draw(t_data, options);
+    };
+
+    $http.get("/api/v1/" + appName + "/info/",
+              {
+                params: {"token": token}
+              })
+     .success(function(data) {
+       $scope.appInfo = data;
+       for(i=0; i < $scope.appInfo.kinds.length; i++){
+           $scope.appInfo.kinds[i] = {"name": $scope.appInfo.kinds[i],
+                                      "selected": true};
+       }
+     });
+
+    // Graph Initialization
+    $http.get("/api/v1/" + appName + "/data/",
+              {
+                params: {"token": token}
+              })
+     .success(function(data) {
+       $scope.data = data;
+       _updateGraph(data);
      })
+
+    $scope.updateGraph = function updateGraph(){
+       var exclude = new Array();
+       for(i=0; i < $scope.appInfo.kinds.length; i++){
+           var kind = $scope.appInfo.kinds[i];
+           if(kind.selected == false){
+               exclude.push(kind.name);
+           }
+       }
+       $http.get("/api/v1/" + appName + "/data/",
+              {
+                params: {"token": token,
+                         "exclude": exclude},
+              })
+         .success(function(data) {
+            $scope.data = data;
+            _updateGraph(data);
+         });
+    };
   });
 </script>
 {% endblock %}

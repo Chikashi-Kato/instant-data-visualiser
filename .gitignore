@@ -7,3 +7,6 @@
 
 # --- System file of MacOS X
 .DS_Store
+
+# --- PyCharm?
+.idea

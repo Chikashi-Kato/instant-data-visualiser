@@ -3,45 +3,56 @@ import os
 import copy
 import webapp2
 import model
+import customdict
 import logging
 import json
 import datetime
 import jinja2
 import collections
+from google.appengine.api import users
 
 TEMPLATE_PATH = os.path.dirname(__file__) + '/views'
 jinja_env = jinja2.Environment(
     loader=jinja2.FileSystemLoader(TEMPLATE_PATH, encoding='utf8'),
     autoescape=True)
 
-class CustomOrderedDefaultdict(collections.OrderedDict):
-    def __init__(self, *args, **kwargs):
-        if not args:
-            self.default_factory = None
+def auth_required(method):
+    def wrapper(self, *args, **kwargs):
+        # Checks for active Google account session
+        google_user = users.get_current_user()
+        user = model.User.getByGoogleUser(google_user)
+        if user == None:
+            user = model.User.create(google_user, google_user.nickname())
+
+        if user:
+            self.user = user
+            method(self, *args, **kwargs)
         else:
-            if not (args[0] is None or callable(args[0])):
-                raise TypeError('first argument must be callable or None')
-            self.default_factory = args[0]
-            args = args[1:]
-        super(CustomOrderedDefaultdict, self).__init__(*args, **kwargs)
+            self.redirect(users.create_login_url(self.request.uri))
 
-    def __missing__ (self, key):
-        if self.default_factory is None:
-            raise KeyError(key)
-        self[key] = default = self.default_factory(key)
-        return default
+    return wrapper
 
-    def __reduce__(self):  # optional, for pickle support
-        args = (self.default_factory,) if self.default_factory else ()
-        return self.__class__, args, None, None, self.iteritems()
+def auth_only_api(method):
+    # Checks for active Google account session
+    def wrapper(self, *args, **kwargs):
+        token_str = self.request.get("token", None)
+        logging.info(token_str)
+        if token_str is not None:
+            user = model.User.getByToken(token_str)
 
-class CustomDefaultDict(dict):
-    def __init__(self, factory):
-        self.factory = factory
+            if user:
+                self.user = user
+                method(self, *args, **kwargs)
+            else:
+                # Don't redirect to login page, because this is api request
+                self.response.set_status(403)
+                # TODO: return error detail
+        else:
+            # Token is required
+            self.response.set_status(400)
+            # TODO: return error detail
 
-    def __missing__(self, key):
-        self[key] = self.factory(key)
-        return self[key]
+    return wrapper
 
 def json_response(method):
     def wrapper(self, *args, **kwargs):
@@ -52,13 +63,16 @@ def json_response(method):
     return wrapper
 
 class GraphHandler(webapp2.RequestHandler):
+    @auth_required
     def get(self, app_name):
         template = jinja_env.get_template("graph.html")
         template_values = {}
         template_values["app_name"] = app_name
+        template_values["token"] = self.user.getToken()
         self.response.out.write(template.render(template_values))
 
 class DataHandler(webapp2.RequestHandler):
+    @auth_only_api
     @json_response
     def get(self, app_name):
         limit = self.request.get('limit', 60)
@@ -83,7 +97,7 @@ class DataHandler(webapp2.RequestHandler):
             logging.info("New row:  %s " % r)
             return r
 
-        rows = CustomOrderedDefaultdict(row_factory)
+        rows = customdict.CustomOrderedDefaultdict(row_factory)
 
         col_position = 0
         for kind, values in dataSet.items():
@@ -96,12 +110,13 @@ class DataHandler(webapp2.RequestHandler):
 
         return results
 
+    @auth_only_api
     @json_response
     def post(self, app_name):
         data = self.request.get('data')
         data = json.loads(data)
 
-        app = model.Application.create(app_name)
+        app = model.Application.create(self.user, app_name)
 
         try:
             keys = []
@@ -117,6 +132,7 @@ class DataHandler(webapp2.RequestHandler):
         return keys
               
 class DataKindHandler(webapp2.RequestHandler):
+    @auth_only_api
     @json_response
     def get(self, app_name, kind):
         limit = self.request.get('limit', 60)
@@ -128,6 +144,7 @@ class DataKindHandler(webapp2.RequestHandler):
 
         return [p.to_dict() for p in app.getData(kind, limit)]
 
+    @auth_only_api
     @json_response
     def post(self, app_name, kind):
         value = self.request.get('value')
@@ -144,10 +161,22 @@ class DataKindHandler(webapp2.RequestHandler):
         except Exception as e:
             self.response.set_status(400)
             return {'message': e.message}
-            
+
+class ShowMyAppsHandler(webapp2.RequestHandler):
+    @auth_required
+    def get(self):
+        token = self.user.getToken()
+        apps = self.user.getMyApps()
+
+        template = jinja_env.get_template("apps.html")
+        template_values = {}
+        template_values["apps"] = apps
+        template_values["token"] = self.user.getToken()
+        self.response.out.write(template.render(template_values))
 
 app = webapp2.WSGIApplication([
         webapp2.Route('/<app_name>/graph/', handler=GraphHandler, name='graph'),
         webapp2.Route('/api/v1/<app_name>/data/<kind>', handler=DataKindHandler, name='dataKindApi'),
         webapp2.Route('/api/v1/<app_name>/data/', handler=DataHandler, name='dataApi'),
+        webapp2.Route('/', handler=ShowMyAppsHandler, name='showMyApps'),
 ], debug=True)

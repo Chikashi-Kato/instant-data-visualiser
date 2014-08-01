@@ -2,7 +2,17 @@
 {% block title %}Dashboard{% endblock %}
 {% block body %}
 <h3>Your token is {{ token }}</h3>
-  {% for app in apps %}
-     <div><a href="/{{app.name}}/graph/">{{ app.name }}</a></div>
-  {% endfor %}
+<p>
+    <h3>Your Data Set</h3>
+    {% for app in apps %}
+    <div><a href="/{{app.getAccessKey()}}/graph/">{{ app.name }}</a></div>
+    {% endfor %}
+</p>
+<p>
+    <h3>Shared Data Set</h3>
+    {% for app in sharedApps %}
+    <div><a href="/{{app.getAccessKey()}}/graph/">{{ app.name }}</a></div>
+    {% endfor %}
+</p>
+
 {% endblock %}

@@ -4,7 +4,9 @@
 <div ng-app="graphApp">
     <div ng-controller="graphCtrl">
         <h1>Hello {[ appInfo.name ]}</h1>
-        <h3>Draw Data</h3>
+        <h3>Draw Data
+            <a ng-click="connectChannel()"><i class="fa" ng-class="{'fa-chain': syncing==true, 'fa-chain-broken': syncing==false}"></i></a>
+        </h3>
         <div ng-repeat="kind in appInfo.kinds">
             <input type="checkbox" name="{[ kind.name ]}" ng-model="kind.selected" ng-change="updateGraph()">{[ kind.name ]}
         </div>
@@ -21,90 +23,13 @@
 
 {% endblock %}
 {% block script %}
+<script type="text/javascript" src="/_ah/channel/jsapi"></script>
 <script type="text/javascript" src="https://www.google.com/jsapi"></script>
-<script type="text/javascript">
-  google.load('visualization', '1', {packages:['corechart']});
-</script>
+<script type="text/javascript" src="/assets/js/GraphModule.js"></script>
 <script>
-  var graphModule = angular.module("graphApp", []);
-  graphModule.constant('accessKey', '{{ access_key }}');
-  graphModule.constant('token', '{{ token }}');
-  graphModule.config(function($interpolateProvider){
-     $interpolateProvider.startSymbol('{[').endSymbol(']}');
-  });
-
-  graphModule.controller('graphCtrl', function graphCtrl($scope, $http, accessKey, token) {
-    var _updateGraph = function _updateGraph(data){
-       for(i = 0 ; i < data.rows.length; i++){
-         data.rows[i].c[0].v = new Date(data.rows[i].c[0].v);
-       }
-       var t_data = new google.visualization.DataTable(data);
-       var options = {
-         title: $scope.appInfo.name
-       };
-
-       var chart = new google.visualization.LineChart(document.getElementById('chart_div'));
-       console.log(chart);
-       console.log(t_data);
-       chart.draw(t_data, options);
-    };
-
-    $http.get("/api/v1/" + accessKey + "/info/",
-              {
-                params: {"token": token}
-              })
-     .success(function(data) {
-       $scope.appInfo = data;
-       for(i=0; i < $scope.appInfo.kinds.length; i++){
-           $scope.appInfo.kinds[i] = {"name": $scope.appInfo.kinds[i],
-                                      "selected": true};
-       }
-     });
-
-    // Graph Initialization
-    $http.get("/api/v1/" + accessKey + "/data/",
-              {
-                params: {"token": token}
-              })
-     .success(function(data) {
-       $scope.data = data;
-       _updateGraph(data);
-     });
-
-    $scope.updateGraph = function updateGraph(){
-       var exclude = new Array();
-       for(i=0; i < $scope.appInfo.kinds.length; i++){
-           var kind = $scope.appInfo.kinds[i];
-           if(kind.selected == false){
-               exclude.push(kind.name);
-           }
-       }
-       $http.get("/api/v1/" + accessKey + "/data/",
-              {
-                params: {"token": token,
-                         "exclude": exclude},
-              })
-         .success(function(data) {
-            $scope.data = data;
-            _updateGraph(data);
-         });
-    };
-
-    $scope.shareGraph = function shareGraph(){
-
-      $http({
-			url: "/api/v1/" + $scope.appInfo.name + "/accessible-users/",
-			params: {"token": token},
-			data: {"email": $scope.shareTo},
-			method : 'POST',
-      })
-      .error(function(data) {
-          alert(data.message);
-      })
-      .success(function(data) {
-          alert(data.message);
-      });
-    };
-  });
+    google.load('visualization', '1', {packages:['corechart']});
+    angular.module("graphApp")
+    .constant('accessKey', '{{ access_key }}')
+    .constant('token', '{{ token }}');
 </script>
 {% endblock %}

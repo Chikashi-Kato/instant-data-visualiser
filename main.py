@@ -5,6 +5,8 @@ import model
 import logging
 import jinja2
 from google.appengine.api import users
+from google.appengine.api import channel
+from google.appengine.api import memcache
 
 TEMPLATE_PATH = os.path.dirname(__file__) + '/views'
 jinja_env = jinja2.Environment(
@@ -58,7 +60,52 @@ class ShowMyAppsHandler(webapp2.RequestHandler):
         template_values["token"] = self.user.getToken()
         self.response.out.write(template.render(template_values))
 
+class ChannelConnectedHandler(webapp2.RequestHandler):
+    def post(self):
+        client_id = self.request.get('from')
+        logging.info(client_id + " is connected.")
+
+        channel_info = memcache.get(client_id)
+        if channel_info is None:
+            logging.info("client_id is not found")
+            return
+
+        logging.info("channel_info here")
+        logging.info(channel_info)
+
+        channel_tokens = memcache.get(channel_info["access_key"])
+        if channel_tokens is None:
+            channel_tokens = []
+
+        channel_tokens.append(channel_info["channel_token"])
+        logging.info(channel_info["access_key"])
+        logging.info(channel_info["channel_token"])
+        memcache.set(channel_info["access_key"], channel_tokens)
+
+class ChannelDisconnectedHandler(webapp2.RequestHandler):
+    def post(self):
+        client_id = self.request.get('from')
+        logging.info(client_id + " is disconnected.")
+
+        channel_info = memcache.get(client_id)
+        if channel_info is None:
+            logging.info("client_id is not found")
+            return
+
+        channel_tokens = memcache.get(channel_info["access_key"])
+        if channel_tokens is None:
+            logging.info("access_key is not found")
+            return
+
+        if channel_info["channel_token"] in channel_tokens:
+            channel_tokens.remove(channel_info["channel_token"])
+            memcache.set(channel_info["access_key"], channel_tokens)
+
+        #memcache.delete(client_id)
+
 app = webapp2.WSGIApplication([
         webapp2.Route('/<access_key>/graph/', handler=GraphHandler, name='graph'),
+        webapp2.Route('/_ah/channel/connected/', handler=ChannelConnectedHandler, name='channelConnected'),
+        webapp2.Route('/_ah/channel/disconnected/', handler=ChannelDisconnectedHandler, name='channelDisconnected'),
         webapp2.Route('/', handler=ShowMyAppsHandler, name='showMyApps'),
 ], debug=True)

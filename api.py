@@ -5,6 +5,8 @@ import json
 import datetime
 import webapp2
 import cgi
+from google.appengine.api import memcache
+from google.appengine.api import channel
 
 def auth_only_api(method):
     # Checks for active Google account session
@@ -77,6 +79,19 @@ class AppInfoHandler(webapp2.RequestHandler):
         result = app.getInfo()
         return result
 
+class AppChannelInfoHandler(webapp2.RequestHandler):
+    @auth_only_api
+    @json_response
+    def get(self, access_key):
+        # Channel API token
+        client_id = access_key + ":" + str(self.user.getToken())
+        channel_token = channel.create_channel(client_id)
+        channel_info = {"access_key": access_key, "channel_token": channel_token}
+        memcache.set(client_id, channel_info)
+        logging.info("client_id: " + client_id )
+
+        return channel_info
+
 class DataHandler(webapp2.RequestHandler):
     @auth_only_api
     @json_response
@@ -88,7 +103,7 @@ class DataHandler(webapp2.RequestHandler):
         app = model.Application.getByAccessKey(access_key)
         if app == None:
             self.response.set_status(404)
-            return {'message': 'application not found: ' + app_name}
+            return {'message': 'application not found: ' + access_key}
 
         kinds = [kind for kind in app.kinds if kind not in excludedKinds]
 
@@ -114,6 +129,14 @@ class DataHandler(webapp2.RequestHandler):
         except Exception as e:
             self.response.set_status(400)
             return {'message': e.message}
+
+        # Move to task queue later
+        channel_tokens = memcache.get(app.getAccessKey())
+        if channel_tokens is not None and type(channel_tokens) is list:
+            for channel_token in channel_tokens:
+                logging.info(channel_token)
+                # Implement partial update in future, maybe
+                channel.send_message(channel_token, "Graph is updated")
 
         return keys
 
@@ -151,6 +174,7 @@ class DataKindHandler(webapp2.RequestHandler):
 app = webapp2.WSGIApplication([
         webapp2.Route('/api/v1/<app_name>/accessible-users/', handler=AccessibleUsersHandler, name='accessibleUsersApi'),
         webapp2.Route('/api/v1/<access_key>/info/', handler=AppInfoHandler, name='appInfoApi'),
+        webapp2.Route('/api/v1/<access_key>/channel-info/', handler=AppChannelInfoHandler, name='appChannelInfoApi'),
         webapp2.Route('/api/v1/<access_key>/data/<kind>', handler=DataKindHandler, name='dataKindApi', methods=['GET']),
         webapp2.Route('/api/v1/<app_name>/data/<kind>', handler=DataKindHandler, name='dataKindApi', methods=['POST']),
         webapp2.Route('/api/v1/<access_key>/data/', handler=DataHandler, name='dataApi', methods=['GET']),

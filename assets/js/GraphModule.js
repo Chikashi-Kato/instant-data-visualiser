@@ -86,28 +86,26 @@ angular.module("graphApp", [])
                   {
                     params: {"token": token}
                   })
-             .success(function(data) {
+             .success(function getChannelInfoSuccess(data) {
                $scope.channelInfo = data;
                $scope.channel = new goog.appengine.Channel( $scope.channelInfo.channel_token );
                $scope.socket = $scope.channel.open();
-               $scope.socket.onopen = function(){
+               $scope.socket.onopen = function socketOnOpen(){
                     $scope.$apply(function(){
                         $scope.syncing = true;
                     });
                 };
-                $scope.socket.onmessage = function(){
+                $scope.socket.onmessage = function socketOnMessage(){
                     $scope.updateGraph();
                 }
-                var socketClosed = function socketClosed(){
+                $scope.socket.onerror = function socketOnError(error){
+                    console.log(error);
+                };
+                $scope.socket.onclose = function socketClosed(){
                     $scope.$apply(function(){
                         $scope.syncing = false;
                     });
                 };
-                $scope.socket.onerror = function socketOnError(error){
-                    console.log(error);
-                    socketClosed();
-                };
-                $scope.socket.onclose = socketClosed;
             });
          };
 

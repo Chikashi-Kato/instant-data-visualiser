@@ -84,7 +84,7 @@ class AppChannelInfoHandler(webapp2.RequestHandler):
     @json_response
     def get(self, access_key):
         # Channel API token
-        client_id = access_key + ":" + str(self.user.getToken())
+        client_id = access_key + self.user.email
         channel_token = channel.create_channel(client_id)
         channel_info = {"access_key": access_key, "channel_token": channel_token}
         memcache.set(client_id, channel_info)

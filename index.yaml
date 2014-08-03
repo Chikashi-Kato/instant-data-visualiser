@@ -15,3 +15,10 @@ indexes:
   - name: kind
   - name: timestamp
     direction: desc
+
+- kind: GraphData
+  ancestor: yes
+  properties:
+  - name: kind
+  - name: timestamp
+    direction: desc

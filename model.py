@@ -241,4 +241,4 @@ class GraphData(ndb.Model):
 
     @classmethod
     def get(cls, app, kind, limit=60):
-        return cls.query(cls.kind==kind).order(-cls.timestamp).fetch(limit)
+        return cls.query(cls.kind==kind, ancestor=app.key).order(-cls.timestamp).fetch(limit)

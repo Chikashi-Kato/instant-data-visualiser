@@ -2,15 +2,15 @@
 {% block title %}{{ app_name }}{% endblock %}
 {% block body %}
 <div ng-app="graphApp">
-    <div ng-controller="graphCtrl">
-        <h1>Hello {[ appInfo.name ]}</h1>
+    <div ng-controller="graphCtrl" ng-cloak>
+        <h1>{[ appInfo.name ]}</h1>
         <h3>Draw Data
             <a ng-click="connectChannel()"><i class="fa" ng-class="{'fa-chain': syncing==true, 'fa-chain-broken': syncing==false}"></i></a>
         </h3>
         <div ng-repeat="kind in appInfo.kinds">
             <input type="checkbox" name="{[ kind.name ]}" ng-model="kind.selected" ng-change="updateGraph()">{[ kind.name ]}
         </div>
-        <div id="chart_div" style="width: 900px; height: 500px;"></div>
+        <div id="chart_div" class="chart"></div>
         {% if isOwner %}
         <p>
             <h3>Share this graph</h3>

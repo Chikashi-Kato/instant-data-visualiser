@@ -103,7 +103,10 @@ angular.module("graphApp", [])
                         $scope.syncing = false;
                     });
                 };
-                $scope.socket.onerror = socketClosed;
+                $scope.socket.onerror = function socketOnError(error){
+                    console.log(error);
+                    socketClosed();
+                };
                 $scope.socket.onclose = socketClosed;
             });
          };

@@ -66,7 +66,7 @@ class User(ndb.Model):
         return new_token
 
     def getMyApps(self, limit=20):
-        return Application.getByUser(self, limit)
+        return Application.getByUser(self, limit=limit)
 
     def getSharedApps(self, limit=20):
         return ndb.get_multi(self.shared_apps[0:limit])
@@ -108,6 +108,7 @@ class Application(ndb.Model):
     kinds = ndb.StringProperty(repeated=True)
     accessible_users = ndb.KeyProperty(kind="User", repeated=True)
     access_key = ndb.StringProperty()
+    deleted = ndb.BooleanProperty(default=False)
 
     def getAccessKey(self):
         if self.access_key is None:
@@ -200,6 +201,20 @@ class Application(ndb.Model):
     def isAccessible(self, user):
         return self.isOwner(user) or (user.key in self.accessible_users)
 
+    def delete(self):
+        # Delete data later
+        self.deleted = True
+        self.put()
+        return self
+
+    def deleteData(self):
+        logging.info("deleteData")
+        logging.info(self)
+
+        GraphData.deleteAll(self)
+
+        return
+
     @classmethod
     def create(cls, user, name):
         existing = cls.getByName(user, name)
@@ -212,16 +227,21 @@ class Application(ndb.Model):
         return app
 
     @classmethod
-    def getByUser(cls, user, limit=20):
-        return cls.query(ancestor=user.key).fetch(limit=limit)
+    def getByUser(cls, user, deleted=False, limit=20):
+        logging.info(deleted)
+        return cls.query(cls.deleted==deleted, ancestor=user.key).fetch(limit=limit)
 
     @classmethod
-    def getByName(cls, user, name):
-        return cls.query(cls.name==name, ancestor=user.key).get()
+    def getByName(cls, user, name, deleted=False):
+        return cls.query(cls.name==name, cls.deleted==deleted, ancestor=user.key).get()
 
     @classmethod
-    def getByAccessKey(cls, access_key):
-        return cls.query(cls.access_key==access_key).get()
+    def getByAccessKey(cls, access_key, deleted=False):
+        return cls.query(cls.access_key==access_key, cls.deleted==deleted).get()
+
+    @classmethod
+    def getDeletedApps(cls):
+        return cls.query(cls.deleted==True).fetch()
 
 class GraphData(ndb.Model):
     kind = ndb.StringProperty()
@@ -241,4 +261,18 @@ class GraphData(ndb.Model):
 
     @classmethod
     def get(cls, app, kind, limit=60):
-        return cls.query(cls.kind==kind, ancestor=app.key).order(-cls.timestamp).fetch(limit)
+        return cls.query(cls.kind==kind, ancestor=app.key).order(-cls.timestamp).fetch(limit=limit)
+
+    @classmethod
+    def deleteAll(cls, app):
+        logging.info("deleteAll")
+        while True:
+            data = cls.query(ancestor=app.key).fetch(limit=1000, keys_only=True)
+            if len(data) <= 0:
+                break
+
+            logging.info(data)
+            ndb.delete_multi(data)
+
+        return
+

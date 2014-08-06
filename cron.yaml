@@ -1,0 +1,4 @@
+cron:
+- description: Daily clean up job
+  url: /worker/delete-apps/
+  schedule: every day 23:00

@@ -10,6 +10,8 @@
         <div ng-repeat="kind in appInfo.kinds">
             <input type="checkbox" name="{[ kind.name ]}" ng-model="kind.selected" ng-change="updateGraph()">{[ kind.name ]}
         </div>
+        <br />
+        <input type="checkbox" name="separatedGraph" ng-model="separatedGraph">Separated Graph
         <div id="chart_div" class="chart"></div>
         {% if isOwner %}
         <p>

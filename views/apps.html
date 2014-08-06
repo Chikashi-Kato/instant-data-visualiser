@@ -5,7 +5,7 @@
 <p>
     <h3>Your Data Set</h3>
     {% for app in apps %}
-    <div><a href="/{{app.getAccessKey()}}/graph/">{{ app.name }}</a></div>
+    <div><a href="/{{app.getAccessKey()}}/graph/">{{ app.name }}</a> <button class="js-delete" type="button" name="{{app.getAccessKey()}}">Delete</button></div>
     {% endfor %}
 </p>
 <p>
@@ -14,5 +14,24 @@
     <div><a href="/{{app.getAccessKey()}}/graph/">{{ app.name }}</a></div>
     {% endfor %}
 </p>
+{% endblock %}
 
+{% block script %}
+<script>
+    var token = '{{ token }}';
+    $(document).ready(function(){
+        $(".js-delete").on("click", function(event){
+            var accessKey = $(event.target).attr("name");
+            if(window.confirm("Are you sure to delete this data set?")){
+                $.ajax({
+                    type: "DELETE",
+                    url: "/api/v1/" + accessKey + "/?token=" + token
+                }).done(function(data) {
+                    alert( "Data set has been deleted");
+                    location.reload();
+                });
+            }
+        });
+    });
+</script>
 {% endblock %}

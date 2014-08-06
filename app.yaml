@@ -16,6 +16,10 @@ handlers:
   script: api.app
   secure: always
 
+- url: /worker/.*
+  script: worker.app
+  login: admin
+
 - url: .*
   script: main.app
   secure: always

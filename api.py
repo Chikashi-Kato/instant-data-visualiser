@@ -83,8 +83,10 @@ class AppChannelInfoHandler(webapp2.RequestHandler):
     @auth_only_api
     @json_response
     def get(self, access_key):
+        import random
+
         # Channel API token
-        client_id = access_key + self.user.email
+        client_id = access_key + self.user.email + str(random.randint(0,1024))
         channel_token = channel.create_channel(client_id)
         channel_info = {"access_key": access_key, "channel_token": channel_token}
         memcache.set(client_id, channel_info)
@@ -140,43 +142,25 @@ class DataHandler(webapp2.RequestHandler):
 
         return keys
 
-class DataKindHandler(webapp2.RequestHandler):
+class AppHandler(webapp2.RequestHandler):
     @auth_only_api
     @json_response
-    def get(self, access_key, kind):
-        limit = self.request.get('limit', 60)
-
+    def delete(self, access_key):
         app = model.Application.getByAccessKey(access_key)
         if app == None:
             self.response.set_status(404)
             return {'message': 'application not found: ' + access_key}
 
-        return app.getFormattedData(requestedKind=[kind], limit=limit)
+        app.delete()
 
-    @auth_only_api
-    @json_response
-    def post(self, app_name, kind):
-        value = self.request.get('value')
-        if value == '':
-            self.response.set_status(400)
-            return {'message': 'value is required'}
+        return {'result':True}
 
-        try:
-            app = model.Application.create(app_name)
-            logging.info(app)
-            data = app.addData(kind, float(value))
-            return {'key': data.key.urlsafe()}
-
-        except Exception as e:
-            self.response.set_status(400)
-            return {'message': e.message}
 
 app = webapp2.WSGIApplication([
         webapp2.Route('/api/v1/<app_name>/accessible-users/', handler=AccessibleUsersHandler, name='accessibleUsersApi'),
         webapp2.Route('/api/v1/<access_key>/info/', handler=AppInfoHandler, name='appInfoApi'),
         webapp2.Route('/api/v1/<access_key>/channel-info/', handler=AppChannelInfoHandler, name='appChannelInfoApi'),
-        webapp2.Route('/api/v1/<access_key>/data/<kind>', handler=DataKindHandler, name='dataKindApi', methods=['GET']),
-        webapp2.Route('/api/v1/<app_name>/data/<kind>', handler=DataKindHandler, name='dataKindApi', methods=['POST']),
         webapp2.Route('/api/v1/<access_key>/data/', handler=DataHandler, name='dataApi', methods=['GET']),
         webapp2.Route('/api/v1/<app_name>/data/', handler=DataHandler, name='dataApi', methods=['POST']),
+        webapp2.Route('/api/v1/<access_key>/', handler=AppHandler, name='appApi', methods=['DELETE']),
 ], debug=True)

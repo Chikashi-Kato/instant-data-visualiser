@@ -3,7 +3,7 @@ angular.module("graphApp", [])
         $interpolateProvider.startSymbol('{[').endSymbol(']}');
      })
     .controller('graphCtrl', function($scope, $http, accessKey, token) {
-        var _updateGraph = function _updateGraph(data){
+        var _drawGraph = function _updateGraph(data){
            for(i = 0 ; i < data.rows.length; i++){
              data.rows[i].c[0].v = new Date(data.rows[i].c[0].v);
            }
@@ -28,16 +28,10 @@ angular.module("graphApp", [])
                $scope.appInfo.kinds[i] = {"name": $scope.appInfo.kinds[i],
                                           "selected": true};
            }
-         });
 
-        // Graph Initialization
-        $http.get("/api/v1/" + accessKey + "/data/",
-                  {
-                    params: {"token": token}
-                  })
-         .success(function(data) {
-           $scope.data = data;
-           _updateGraph(data);
+           // Graph Initialization
+           $scope.updateGraph();
+
          });
 
         $scope.updateGraph = function updateGraph(){
@@ -55,7 +49,7 @@ angular.module("graphApp", [])
                   })
              .success(function(data) {
                 $scope.data = data;
-                _updateGraph(data);
+                _drawGraph(data);
              });
         };
 

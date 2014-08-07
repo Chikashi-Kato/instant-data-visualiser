@@ -8,11 +8,11 @@
             <a ng-click="connectChannel()"><i class="fa" ng-class="{'fa-chain': syncing==true, 'fa-chain-broken': syncing==false}"></i></a>
         </h3>
         <div ng-repeat="kind in appInfo.kinds">
-            <input type="checkbox" name="{[ kind.name ]}" ng-model="kind.selected" ng-change="updateGraph()">{[ kind.name ]}
+            <input type="checkbox" name="{[ kind.name ]}" ng-model="kind.selected" ng-change="redrawGraph()">{[ kind.name ]}
         </div>
         <br />
-        <input type="checkbox" name="separatedGraph" ng-model="separatedGraph">Separated Graph
-        <div id="chart_div" class="chart"></div>
+        <input type="checkbox" name="separatedGraph" ng-model="separatedGraph" ng-change="redrawGraph()">Separated Graph
+        <div id="charts-frame"></div>
         {% if isOwner %}
         <p>
             <h3>Share this graph</h3>

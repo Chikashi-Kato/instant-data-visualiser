@@ -91,6 +91,7 @@ angular.module("graphApp", [])
                     params: {"token": token}
                   })
              .success(function(data) {
+                console.log(data);
                 $scope.data = data;
                 $scope.redrawGraph();
              });
@@ -120,23 +121,34 @@ angular.module("graphApp", [])
                     params: {"token": token}
                   })
              .success(function getChannelInfoSuccess(data) {
+               console.log("getChannelInfoSuccess");
                $scope.channelInfo = data;
                $scope.channel = new goog.appengine.Channel( $scope.channelInfo.channel_token );
                $scope.socket = $scope.channel.open();
                $scope.socket.onopen = function socketOnOpen(){
+                    console.log("socketOnOpen");
                     $scope.$apply(function(){
                         $scope.syncing = true;
                     });
                 };
                 $scope.socket.onmessage = function socketOnMessage(){
+                    console.log("socketOnMesssage");
                     $scope.updateGraph();
                 }
                 $scope.socket.onerror = function socketOnError(error){
+                    console.log("socketOnError");
                     console.log(error);
                 };
                 $scope.socket.onclose = function socketClosed(){
+                    console.log("socketOnClose");
+                    var connected = $scope.syncing;
                     $scope.$apply(function(){
                         $scope.syncing = false;
+
+                        // Reconnect, if it's just disconnected.
+                        if(connected == true){
+                          $scope.connectChannel();
+                        }
                     });
                 };
             });

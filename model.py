@@ -141,7 +141,7 @@ class Application(ndb.Model):
         user.shared_apps.remove(self.key)
         user.put()
 
-    def addData(self, kind, value, timestamp=None):
+    def addData(self, kind, value, timestamp):
         if kind not in self.kinds:
             self.kinds.append(kind)
             self.put()
@@ -246,15 +246,14 @@ class Application(ndb.Model):
 class GraphData(ndb.Model):
     kind = ndb.StringProperty()
     value = ndb.FloatProperty()
-    timestamp = JsonConvertableDateTimeProperty(auto_now=True)
+    timestamp = JsonConvertableDateTimeProperty()
 
     @classmethod
-    def create(cls, app, kind, value, timestamp=None):
+    def create(cls, app, kind, value, timestamp):
         data = cls(parent=app.key)
         data.kind = kind
         data.value = value
-        if timestamp is not None:
-            data.timestamp = timestamp
+        data.timestamp = timestamp
         data.put()
 
         return data

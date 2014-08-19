@@ -4,8 +4,8 @@ namespace dataConnector;
 
 class Connector
 {
-  //private static $_api = "https://instant-data-visualiser.appspot.com/api/v1/";
-  private static $_api = "http://localhost:8080/api/v1/";
+  private static $_api = "https://instant-data-visualiser.appspot.com/api/v1/";
+  //private static $_api = "http://localhost:8080/api/v1/";
   private $_appName = "";
   private $_token = "";
 

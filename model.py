@@ -215,6 +215,9 @@ class Application(ndb.Model):
 
         return
 
+    def getAccessibleUsers(self, limit=20):
+        return ndb.get_multi(self.accessible_users[0:limit])
+
     @classmethod
     def create(cls, user, name):
         existing = cls.getByName(user, name)

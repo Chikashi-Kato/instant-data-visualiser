@@ -9,6 +9,11 @@ class DeleteAppsHandler(webapp2.RequestHandler):
             logging.info(app)
 
             app.deleteData()
+
+            for user in app.getAccessibleUsers(limit=1000):
+                user.shared_apps.remove(app.key)
+                user.put()
+
             app.key.delete()
 
 app = webapp2.WSGIApplication([
